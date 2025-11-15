@@ -1,0 +1,41 @@
+{
+  "name": "carv-cns",
+  "version": "0.1.0",
+  "private": true,
+  "description": "This ZIP is the **complete frontend**, already including your latest `App.tsx` from the canvas.",
+  "homepage": "https://github.com/Robinhood-007/CARV-NAMING-SERVICE#readme",
+  "bugs": {
+    "url": "https://github.com/Robinhood-007/CARV-NAMING-SERVICE/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Robinhood-007/CARV-NAMING-SERVICE.git"
+  },
+  "license": "ISC",
+  "author": "Robin",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --host --port 5174"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "0.29.0",
+    "@solana/spl-token": "0.4.6",
+    "@solana/web3.js": "1.95.3",
+    "bs58": "5.0.0",
+    "buffer": "^6.0.3",
+    "process": "^0.11.10",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-router-dom": "^7.9.5"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "@vitejs/plugin-react": "^5.1.1",
+    "typescript": "5.5.4",
+    "vite": "^5.4.8"
+  }
+}
