@@ -126,8 +126,6 @@ function useBackpack(connection: Connection) {
   return { pubkey, connect, disconnect, sendTx, isInstalled: !!provider };
 }
 
-}
-
 /** ===== Utilities ===== */
 const enc = new TextEncoder();
 const bytes = (s: string) => enc.encode(s);
