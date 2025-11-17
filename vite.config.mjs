@@ -1,8 +1,24 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    nodePolyfills({
+      protocolImports: true,
+      // you can also add `include: ['buffer', 'process', 'crypto']` if needed later
+    }),
+  ],
+  resolve: {
+    alias: {
+      crypto: 'crypto-browserify',
+    },
+  },
+  define: {
+    // some node-based libs expect process.env to exist
+    'process.env': {},
+  },
   server: {
     proxy: {
       // proxy /rpc -> https://rpc.testnet.carv.io/
