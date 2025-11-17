@@ -88,15 +88,29 @@ type BackpackSolana = {
 declare global { interface Window { backpack?: { solana?: BackpackSolana } } }
 
 function useBackpack(connection: Connection) {
+  const [provider, setProvider] = useState<BackpackSolana | null>(null);
   const [pubkey, setPubkey] = useState<PublicKey | null>(null);
-  const provider = useMemo(() => window.backpack?.solana, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (window.backpack?.solana) {
+        setProvider(window.backpack.solana);
+        clearInterval(interval);
+      }
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
 
   const connect = async () => {
     if (!provider) throw new Error('Backpack wallet not found. Please install/open Backpack.');
     await provider.connect();
     setPubkey(provider.publicKey);
   };
-  const disconnect = async () => { await provider?.disconnect(); setPubkey(null); };
+
+  const disconnect = async () => {
+    await provider?.disconnect();
+    setPubkey(null);
+  };
 
   const sendTx = async (tx: Transaction): Promise<string> => {
     if (!provider?.publicKey) throw new Error('Connect Backpack first.');
@@ -110,6 +124,8 @@ function useBackpack(connection: Connection) {
   };
 
   return { pubkey, connect, disconnect, sendTx, isInstalled: !!provider };
+}
+
 }
 
 /** ===== Utilities ===== */
