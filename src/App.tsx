@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+﻿import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Buffer } from 'buffer';
 import process from 'process';
 (window as any).global = window;
@@ -42,6 +42,13 @@ const TREASURY_PUBKEY = safePk(TREASURY_PUBKEY_STR);
 const HAS_CONFIG = !!PROGRAM_ID && !!TREASURY_PUBKEY;
 
 const GRACE_SECS = 7 * 24 * 60 * 60;
+
+const SOCIAL_LINKS = [
+  { label: 'Twitter', href: 'https://x.com/carv_official', iconSrc: '/social-twitter.svg' },
+  { label: 'Discord', href: 'https://discord.gg/4YSDDFmw', iconSrc: '/social-discord.svg' },
+  { label: 'Telegram', href: 'https://t.me/carv_official_global', iconSrc: '/social-telegram.svg' },
+  { label: 'Website', href: 'https://docs.carv.io/', iconSrc: '/social-website.svg' },
+] as const;
 
 /** ===== Minimal IDL (client) ===== */
 const IDL = {
@@ -162,10 +169,12 @@ async function nameSeed32(nameLower: string): Promise<Uint8Array> {
   return new Uint8Array(digest); // length 32
 }
 
-async function namePdaWithSeed(raw: string): Promise<[PublicKey, number]> {
+async function namePdaWithSeed(raw: string): Promise<{ pda: PublicKey; seed: Uint8Array; bump: number }> {
+  if (!PROGRAM_ID) throw new Error('PROGRAM_ID not configured');
   const lower = raw.toLowerCase();
   const seed = await nameSeed32(lower);
-  return PublicKey.findProgramAddressSync([bytes('cns'), seed], PROGRAM_ID!);
+  const [pda, bump] = PublicKey.findProgramAddressSync([bytes('cns'), seed], PROGRAM_ID);
+  return { pda, seed, bump };
 }
 
 const reversePda = (owner: PublicKey): [PublicKey, number] =>
@@ -217,7 +226,7 @@ function WalletMenu({
   const [open, setOpen] = React.useState(false);
   const buttonRef = React.useRef<HTMLButtonElement | null>(null);
   const menuRef = React.useRef<HTMLDivElement | null>(null);
-  const short = (s: string) => (s ? `${s.slice(0, 4)}…${s.slice(-4)}` : '');
+  const short = (s: string) => (s ? `${s.slice(0, 4)}...${s.slice(-4)}` : '');
 
   React.useEffect(() => {
     const onDoc = (e: MouseEvent) => {
@@ -265,6 +274,21 @@ function WalletMenu({
         onClick={() => setOpen(v => !v)}
         aria-expanded={open}
         aria-haspopup="menu"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '10px 14px',
+          borderRadius: 12,
+          background: 'var(--primary)',
+          color: '#fff',
+          fontWeight: 700,
+          border: 'none',
+          boxShadow: 'var(--shadow)',
+          transition: 'all 140ms ease',
+          transform: open ? 'translateY(-1px)' : undefined,
+          filter: open ? 'brightness(1.04)' : undefined,
+        }}
       >
         {short(address)}
         <svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true" style={{ marginLeft: 6 }}>
@@ -281,34 +305,111 @@ function WalletMenu({
             position: 'absolute',
             right: 0,
             top: '110%',
-            minWidth: 180,
-            padding: 8,
-            borderRadius: 12,
-            background: 'var(--panel)',
+            minWidth: 200,
+            padding: 10,
+            borderRadius: 14,
+            background: 'color-mix(in oklab, var(--panel) 95%, transparent)',
             border: '1px solid var(--border)',
-            boxShadow: '0 8px 40px rgba(0,0,0,.35)',
+            boxShadow: 'var(--shadow)',
+            backdropFilter: 'blur(10px) saturate(1.05)',
             zIndex: 50,
+            transition: 'transform 140ms ease, opacity 140ms ease',
+            transform: open ? 'translateY(0px)' : 'translateY(-4px)',
+            opacity: open ? 1 : 0.5,
           }}
         >
-          <button className="menu-item" onClick={copyAddress} role="menuitem" style={{ width: '100%' }}>
-            Copy Address
+          <button
+            className="menu-item"
+            onClick={copyAddress}
+            role="menuitem"
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 12px',
+              borderRadius: 10,
+              border: '1px solid transparent',
+              background: 'transparent',
+              color: 'var(--text)',
+              transition: 'all 120ms ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'color-mix(in oklab, var(--panel) 88%, transparent)';
+              e.currentTarget.style.borderColor = 'var(--border)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderColor = 'transparent';
+              e.currentTarget.style.transform = 'none';
+            }}
+          >
+            <span style={{ width: 8, height: 8, borderRadius: 9999, background: 'var(--accent)', boxShadow: '0 0 8px color-mix(in oklab, var(--accent) 70%, transparent)' }} />
+            <span>Copy Address</span>
           </button>
           <button
             className="menu-item"
             onClick={() => { setOpen(false); onViewNames(); }}
             role="menuitem"
-            style={{ width: '100%' }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 12px',
+              borderRadius: 10,
+              border: '1px solid transparent',
+              background: 'transparent',
+              color: 'var(--text)',
+              transition: 'all 120ms ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'color-mix(in oklab, var(--panel) 88%, transparent)';
+              e.currentTarget.style.borderColor = 'var(--border)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderColor = 'transparent';
+              e.currentTarget.style.transform = 'none';
+            }}
           >
-            View Names
+            <span style={{ width: 8, height: 8, borderRadius: 9999, background: 'var(--accent)', boxShadow: '0 0 8px color-mix(in oklab, var(--accent) 70%, transparent)' }} />
+            <span>View Names</span>
           </button>
           <div className="menu-sep" style={{ height: 1, background: 'var(--border)', margin: '8px 0' }} />
           <button
             className="menu-item danger"
             onClick={() => { setOpen(false); disconnect(); }}
             role="menuitem"
-            style={{ width: '100%', color: '#ff6b6b' }}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 12px',
+              borderRadius: 10,
+              border: '1px solid transparent',
+              background: 'transparent',
+              color: '#ff6b6b',
+              transition: 'all 120ms ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255,71,87,0.1)';
+              e.currentTarget.style.borderColor = 'rgba(255,71,87,0.3)';
+              e.currentTarget.style.color = '#fff5f5';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderColor = 'transparent';
+              e.currentTarget.style.color = '#ff6b6b';
+              e.currentTarget.style.transform = 'none';
+            }}
           >
-            Disconnect
+            <span style={{ width: 8, height: 8, borderRadius: 9999, background: '#ef4444', boxShadow: '0 0 8px rgba(239,68,68,0.7)' }} />
+            <span>Disconnect</span>
           </button>
         </div>
       )}
@@ -366,6 +467,11 @@ function AppInner() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [txSig, setTxSig] = useState<string | null>(null);
+  useEffect(() => {
+    if (!message) return;
+    const t = setTimeout(() => setMessage(null), 4000);
+    return () => clearTimeout(t);
+  }, [message]);
 
   // balances
   const [solBalance, setSolBalance] = useState<number | null>(null);
@@ -450,7 +556,7 @@ function AppInner() {
 
       setLookup({ status: 'checking' });
       try {
-        const [pda] = await namePdaWithSeed(normalized);
+        const { pda } = await namePdaWithSeed(normalized);
         const info = await connection.getAccountInfo(pda, 'confirmed');
         if (!info) { if (!cancelled) setLookup({ status: 'available' }); return; }
         const decoded: any = ACCOUNTS_CODER.decode('NameRecord', info.data);
@@ -499,7 +605,7 @@ const createOrGetAtaIx = async (owner: PublicKey) => {
   return { ata, ix: null };
 };
 
-// --- REQUIRE the treasury’s CARV ATA to already exist (no creation) ---
+// --- REQUIRE the treasury's CARV ATA to already exist (no creation) ---
 async function requireTreasuryAtaExists(
   connection: Connection,
   mint: PublicKey,              // CARV mint
@@ -528,12 +634,6 @@ async function requireTreasuryAtaExists(
   return ata;
 }
 
-// --- PDA with SHA-256(lowercase(name)) seed ---
-const namePdaWithSeed = async (nameLower: string): Promise<[PublicKey, number]> => {
-  const seed = await nameSeed32(nameLower); // 32-byte SHA-256
-  return PublicKey.findProgramAddressSync([bytes('cns'), seed], PROGRAM_ID!);
-};
-
 // Keep this:
 const register = async () => { if (!pubkey) return; await registerForName(normalized, years); };
 
@@ -546,9 +646,9 @@ const registerForName = async (targetName: string, yrs: number) => {
     }
     if (!pubkey) throw new Error('Connect Backpack first.');
 
-    // Enforce 3–64 and lowercase charset
+    // Enforce 3-64 and lowercase charset
     if (!/^[a-z0-9-]{3,64}$/.test(targetName)) {
-      throw new Error('Invalid name. Use 3–64 chars: a–z, 0–9, "-"');
+      throw new Error('Invalid name. Use 3-64 chars: a-z, 0-9, "-"');
     }
 
     // Payer ATA: create if missing
@@ -564,8 +664,7 @@ const registerForName = async (targetName: string, yrs: number) => {
 
     // Derive PDA using sha256(lowercase(name))
     const lower = targetName.toLowerCase();
-    const seed = await nameSeed32(lower); // Uint8Array(32)
-    const [nameRecord] = await namePdaWithSeed(lower);
+    const { pda: nameRecord, seed } = await namePdaWithSeed(lower);
 
     // Build anchor ix (note we pass the 32-byte seed as arg)
     const ix = await program!.methods
@@ -656,15 +755,13 @@ const registerForName = async (targetName: string, yrs: number) => {
         .transfer_name(row.name, newOwner)
         .accounts({ owner: pubkey, nameRecord: row.pda })
         .rpc();
-      setTxSig(sig); setMessage(`Transferred ${row.name}.carv to ${newOwner.toBase58().slice(0,4)}…${newOwner.toBase58().slice(-4)}`);
+      setTxSig(sig); setMessage(`Transferred ${row.name}.carv to ${newOwner.toBase58().slice(0,4)}...${newOwner.toBase58().slice(-4)}`);
       await refreshMyNames();
     } catch (e: any) { setMessage(e.message ?? String(e)); } finally { setBusy(false); }
   };
 
-  const setResolver = async (row: MyName) => {
+  const updateResolver = async (row: MyName, newResolver: PublicKey) => {
     if (!pubkey || !program) return;
-    const input = window.prompt(`Set resolver for ${row.name}.carv (public key):`, row.resolver);
-    if (!input) return; let newResolver: PublicKey; try { newResolver = new PublicKey(input.trim()); } catch { setMessage('Invalid public key'); return; }
     try {
       setBusy(true); setMessage(null); setTxSig(null);
       const sig = await program.methods
@@ -691,8 +788,8 @@ const registerForName = async (targetName: string, yrs: number) => {
   };
 
   /** UI helpers */
-  const solDisplay = solBalance == null ? '—' : solBalance.toLocaleString(undefined, { maximumFractionDigits: 6 });
-  const carvDisplay = carvBalance == null ? '—' : carvBalance.toLocaleString(undefined, { maximumFractionDigits: 4 });
+  const solDisplay = solBalance == null ? '\u2014' : solBalance.toLocaleString(undefined, { maximumFractionDigits: 6 });
+  const carvDisplay = carvBalance == null ? '\u2014' : carvBalance.toLocaleString(undefined, { maximumFractionDigits: 4 });
 
   const lockedByOthers =
     (lookup.status === 'taken' && !(lookup as any).isYours) ||
@@ -704,7 +801,7 @@ const registerForName = async (targetName: string, yrs: number) => {
 
   const buttonLabel = (() => {
     if (!pubkey) return 'Connect Wallet First';
-    if (busy) return 'Processing…';
+    if (busy) return 'Processing...';
     if (!fullLabel) return 'Register name';
     if (lookup.status === 'taken' && (lookup as any).isYours) return `Extend ${fullLabel}`;
     if (lookup.status === 'grace' && (lookup as any).isYours) return `Renew ${fullLabel}`;
@@ -723,10 +820,52 @@ const registerForName = async (targetName: string, yrs: number) => {
     return `${d}d ${h}h ${m}m ${s}s remaining`;
   })();
 
+  const formatDuration = (secs: number) => {
+    const d = Math.floor(secs / 86400);
+    const h = Math.floor((secs % 86400) / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    return `${d}d ${h}h ${m}m ${s}s`;
+  };
+
   // per-row renew state
   const [renewYears, setRenewYears] = useState<Record<string, number>>({});
   const getRenewYears = (n: string) => renewYears[n] ?? 1;
   const incRenew = (n: string, delta: number) => setRenewYears(prev => ({ ...prev, [n]: Math.max(1, Math.min(10, (prev[n] ?? 1) + delta)) }));
+
+  const [resolverModal, setResolverModal] = useState<{ row: MyName | null; value: string; error: string | null }>({ row: null, value: '', error: null });
+  const openResolverModal = (row: MyName) => setResolverModal({ row, value: row.resolver, error: null });
+  const closeResolverModal = () => setResolverModal({ row: null, value: '', error: null });
+  const submitResolverModal = async () => {
+    if (!resolverModal.row) return;
+    try {
+      const pk = new PublicKey(resolverModal.value.trim());
+      await updateResolver(resolverModal.row, pk);
+      closeResolverModal();
+    } catch {
+      setResolverModal(prev => ({ ...prev, error: 'Invalid public key' }));
+    }
+  };
+
+  // portfolio visibility (collapsible)
+  const [showPortfolio, setShowPortfolio] = useState(false);
+
+  // demo preview rows for My Names (shown when empty)
+  const demoNames: Array<{
+    name: string;
+    resolver: string;
+    expiresAt: number;
+    status: 'active' | 'grace' | 'expired';
+    isPrimary?: boolean;
+  }> = useMemo(() => {
+    const now = Math.floor(Date.now() / 1000);
+    return [
+      { name: 'alice', resolver: 'DemoResolver1111DemoResolver1111', expiresAt: now + 90 * 86400, status: 'active', isPrimary: true },
+      { name: 'builder', resolver: 'DemoResolver2222DemoResolver2222', expiresAt: now + 5 * 86400, status: 'grace' },
+      { name: 'archivist', resolver: 'DemoResolver3333DemoResolver3333', expiresAt: now - 10 * 86400, status: 'expired' },
+    ];
+  }, []);
+  const showDemoNames = !loadingMyNames && (!pubkey || !myNames || myNames.length === 0);
 
   /** ===== Header (full-width; balances only on /register) ===== */
   const Header = (
@@ -759,7 +898,7 @@ const registerForName = async (targetName: string, yrs: number) => {
           onClick={() => setMode(m => (m === 'dark' ? 'light' : 'dark'))}
           style={{ width: 40, height: 40, borderRadius: 10 }}
         >
-          {mode === 'dark' ? '🌙' : '☀️'}
+          {mode === 'dark' ? '🌙' : '☀��'}
         </button>
 
         {onRegistrarPage && pubkey && (
@@ -776,7 +915,7 @@ const registerForName = async (targetName: string, yrs: number) => {
             }}
           >
             <span style={{ width: 8, height: 8, borderRadius: 9999, background: '#43d182', boxShadow: '0 0 12px rgba(67,209,130,.75)' }} />
-            <span className="pill">◎ {solDisplay} tSOL</span>
+            <span className="pill">• {solDisplay} tSOL</span>
             <span className="pill">CARV {carvDisplay}</span>
           </div>
         )}
@@ -788,6 +927,7 @@ const registerForName = async (targetName: string, yrs: number) => {
           setMessage={setMessage}
           onViewNames={() => {
             navigate('/register');
+            setShowPortfolio(true);
             setTimeout(() => {
               const el = document.getElementById('my-names');
               if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -838,6 +978,7 @@ const registerForName = async (targetName: string, yrs: number) => {
               <div>
                 <div style={{ fontWeight: 600 }}>Register &amp; Manage</div>
                 <div className="subtitle">Payments in CARV • Fees in testnet SOL</div>
+                <div className="subtitle" style={{ marginTop: 2 }}>All actions are on-chain; transactions appear in the explorer.</div>
               </div>
             </div>
           </div>
@@ -859,6 +1000,30 @@ const registerForName = async (targetName: string, yrs: number) => {
             )}
           </div>
         </div>
+
+        <div className="row" style={{ marginTop: 16, justifyContent: 'center', gap: 12, flexWrap: 'wrap' }}>
+          {SOCIAL_LINKS.map((link) => (
+            <a
+              key={link.href}
+              href={link.href}
+              target="_blank"
+              rel="noreferrer"
+              className="pill"
+              style={{
+                gap: 6,
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                color: 'var(--text)',
+                borderColor: 'var(--border)',
+                background: 'color-mix(in oklab, var(--panel) 85%, transparent)',
+              }}
+            >
+              <img src={link.iconSrc} alt={link.label} style={{ width: 18, height: 18, display: 'block', filter: 'var(--icon-filter)' }} />
+              <span>{link.label}</span>
+            </a>
+          ))}
+        </div>
       </div>
     </>
   );
@@ -879,7 +1044,7 @@ const registerForName = async (targetName: string, yrs: number) => {
         {/* Registration */}
         <div className="card neon" style={{ marginTop: 16 }}>
           {/* Name field */}
-          <div className="input-group" style={{ flex: 1 }}>
+          <div className="input-group" style={{ flex: 1, marginBottom: 16 }}>
             <input
               placeholder="yourname"
               value={name}
@@ -890,11 +1055,22 @@ const registerForName = async (targetName: string, yrs: number) => {
           </div>
 
           {/* Years stepper */}
-          <div className="row stack-under">
-            <div className="stepper">
-              <button aria-label="Decrease years" onClick={() => setYears(Math.max(1, years - 1))}>−</button>
-              <div className="pill">{years} year{years > 1 ? 's' : ''}</div>
-              <button aria-label="Increase years" onClick={() => setYears(Math.min(10, years + 1))}>+</button>
+          <div className="row stack-under" style={{ alignItems: 'stretch' }}>
+            <div
+              className="stepper"
+              style={{
+                borderRadius: 14,
+                padding: 8,
+                border: '1px solid color-mix(in oklab, var(--accent) 45%, var(--border))',
+                background: 'color-mix(in oklab, var(--panel) 70%, transparent)',
+                minWidth: 220,
+                justifyContent: 'space-between',
+                fontWeight: 700,
+              }}
+            >
+              <button aria-label="Decrease years" onClick={() => setYears(Math.max(1, years - 1))} style={{ fontWeight: 700 }}>-</button>
+              <div className="pill" style={{ fontWeight: 700 }}>{years} year{years > 1 ? 's' : ''}</div>
+              <button aria-label="Increase years" onClick={() => setYears(Math.min(10, years + 1))} style={{ fontWeight: 700 }}>+</button>
             </div>
 
             {/* Total price */}
@@ -915,17 +1091,17 @@ const registerForName = async (targetName: string, yrs: number) => {
           {/* Availability */}
           <div className="rule" />
           <div className="row" style={{ justifyContent: 'space-between' }}>
-            <div style={{ fontWeight: 700 }}>Availability</div>
+            <div className="section-title">Availability</div>
             <div className="subtitle">Status updates as you type</div>
           </div>
 
           <div style={{ marginTop: 8 }}>
             {normalized.length < 3 || !isValidNameCore(normalized) ? (
-              <div className="subtitle">Enter 3–64 characters (a–z, 0–9, “-”).</div>
+              <div className="subtitle">Enter 3-64 characters (a-z, 0-9, "-").</div>
             ) : lookup.status === 'checking' ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div className="loader" />
-                <div className="subtitle">Checking availability…</div>
+                <div className="subtitle">Checking availability...</div>
               </div>
             ) : lookup.status === 'available' ? (
               <div>
@@ -939,7 +1115,7 @@ const registerForName = async (targetName: string, yrs: number) => {
                   In 7-day grace (owner-only)
                 </span>
                 <div className="subtitle" style={{ marginTop: 6 }}>
-                  Owner: {(lookup as any).owner.slice(0, 4)}…{(lookup as any).owner.slice(-4)} • Resolver: {(lookup as any).resolver.slice(0, 4)}…{(lookup as any).resolver.slice(-4)}
+                  Owner: {(lookup as any).owner.slice(0, 4)}...{(lookup as any).owner.slice(-4)} • Resolver: {(lookup as any).resolver.slice(0, 4)}...{(lookup as any).resolver.slice(-4)}
                 </div>
                 <div style={{ marginTop: 6 }}><b>Warning:</b> {graceCountdown}</div>
                 <div style={{ marginTop: 6 }}><b>Note:</b> Transfers are <u>disabled</u> during grace; the owner can only renew.</div>
@@ -964,7 +1140,6 @@ const registerForName = async (targetName: string, yrs: number) => {
             </button>
           </div>
 
-          {message && <div style={{ marginTop: 10 }}>{message}</div>}
           {txSig && (
             <div style={{ marginTop: 6 }}>
               View transaction: <a href={explorerTx(txSig)} target="_blank" rel="noreferrer">{txSig}</a>
@@ -974,84 +1149,154 @@ const registerForName = async (targetName: string, yrs: number) => {
 
         {/* Portfolio */}
         <div id="my-names" className="card neon" style={{ marginTop: 16 }}>
-          <div className="row" style={{ justifyContent: 'space-between' }}>
-            <div style={{ fontWeight: 700 }}>My Names</div>
+          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div className="section-title">My Names</div>
+              <button className="btn btn-ghost" onClick={() => setShowPortfolio(v => !v)}>{showPortfolio ? 'Hide' : 'Show'}</button>
+            </div>
             <button className="btn btn-ghost" onClick={() => refreshMyNames()}>Refresh</button>
           </div>
 
-          {!pubkey ? (
-            <div className="subtitle" style={{ marginTop: 8 }}>Connect Backpack to view your names.</div>
-          ) : loadingMyNames ? (
-            <div style={{ marginTop: 8 }}>Loading…</div>
-          ) : portfolioError ? (
-            <div style={{ marginTop: 8, color: '#ff6b6b' }}>Error: {portfolioError}</div>
-          ) : !myNames || myNames.length === 0 ? (
-            <div className="subtitle" style={{ marginTop: 8 }}>No names yet.</div>
-          ) : (
-            <div style={{ marginTop: 10 }}>
-              {myNames.map((row) => {
-                const now = nowTs;
-                const remaining = Math.max(0, (row.status === 'active' ? row.expiresAt : row.expiresAt + GRACE_SECS) - now);
-                const fmt = (secs: number) => {
-                  const d = Math.floor(secs / 86400);
-                  const h = Math.floor((secs % 86400) / 3600);
-                  const m = Math.floor((secs % 3600) / 60);
-                  const s = secs % 60;
-                  return `${d}d ${h}h ${m}m ${s}s`;
-                };
-                return (
-                  <div key={row.pda.toBase58()} style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1.4fr auto', gap: 10, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{row.name}.carv {row.isPrimary && <span className="pill" style={{ marginLeft: 6 }}>Primary</span>}</div>
-                      <div className="subtitle">Resolver: {row.resolver.slice(0, 4)}…{row.resolver.slice(-4)}</div>
-                    </div>
-                    <div>
-                      <div className="subtitle">Expires</div>
-                      <div>{new Date(row.expiresAt * 1000).toUTCString()}</div>
-                    </div>
-                    <div>
-                      <div className="subtitle">Status</div>
-                      {row.status === 'active' && <div><span className="pill">Active</span> <span className="subtitle">{fmt(remaining)}</span></div>}
-                      {row.status === 'grace' && <div><span className="pill" style={{ background: '#ffddaa' }}>In grace</span> <span className="subtitle">{fmt(remaining)} left</span></div>}
-                      {row.status === 'expired' && <div><span className="pill">Expired</span></div>}
-                    </div>
-                    <div className="row" style={{ flexWrap: 'wrap' }}>
-                      <div className="stepper">
-                        <button onClick={() => incRenew(row.name, -1)}>−</button>
-                        <div className="pill">{getRenewYears(row.name)}y</div>
-                        <button onClick={() => incRenew(row.name, +1)}>+</button>
+          {showPortfolio && (
+            !pubkey ? (
+              <div className="subtitle" style={{ marginTop: 8 }}>Connect Backpack to view your names.</div>
+            ) : loadingMyNames ? (
+              <div style={{ marginTop: 8 }}>Loading...</div>
+            ) : portfolioError ? (
+              <div style={{ marginTop: 8, color: '#ff6b6b' }}>Error: {portfolioError}</div>
+            ) : !myNames || myNames.length === 0 ? (
+              <div className="subtitle" style={{ marginTop: 8 }}>No names yet.</div>
+            ) : (
+              <div style={{ marginTop: 10 }}>
+                {myNames.map((row) => {
+                  const now = nowTs;
+                  const remaining = Math.max(0, (row.status === 'active' ? row.expiresAt : row.expiresAt + GRACE_SECS) - now);
+                  return (
+                    <div key={row.pda.toBase58()} style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr 1fr 1.4fr auto', gap: 10, alignItems: 'center', padding: '12px 0', borderTop: '1px solid var(--border)' }}>
+                      <div>
+                        <div style={{ fontWeight: 600 }}>{row.name}.carv {row.isPrimary && <span className="pill" style={{ marginLeft: 6 }}>Primary</span>}</div>
+                        <div className="subtitle">Resolver: {row.resolver.slice(0, 4)}...{row.resolver.slice(-4)}</div>
                       </div>
-                      <button className="btn btn-ghost" disabled={busy} onClick={() => registerForName(row.name, getRenewYears(row.name))}>
-                        {row.status === 'active' ? 'Extend' : row.status === 'grace' ? 'Renew' : 'Re-register'}
-                      </button>
-                      <button className="btn btn-ghost" disabled={busy || row.status !== 'active'} onClick={() => transferName(row)}>Transfer</button>
-                      <button className="btn btn-ghost" disabled={busy || row.isPrimary || row.status === 'expired'} onClick={() => setPrimary(row)}>Set primary</button>
-                      <button className="btn btn-ghost" disabled={busy} onClick={() => setResolver(row)}>Set resolver</button>
+                      <div>
+                        <div className="subtitle">Expires</div>
+                        <div>{new Date(row.expiresAt * 1000).toUTCString()}</div>
+                      </div>
+                      <div>
+                        <div className="subtitle">Status</div>
+                        {row.status === 'active' && <div><span className="pill">Active</span> <span className="subtitle">{formatDuration(remaining)}</span></div>}
+                        {row.status === 'grace' && <div><span className="pill" style={{ background: '#ffddaa' }}>In grace</span> <span className="subtitle">{formatDuration(remaining)} left</span></div>}
+                        {row.status === 'expired' && <div><span className="pill">Expired</span></div>}
+                      </div>
+                      <div className="row" style={{ flexWrap: 'wrap' }}>
+                        <div className="stepper">
+                          <button onClick={() => incRenew(row.name, -1)}>-</button>
+                          <div className="pill">{getRenewYears(row.name)}y</div>
+                          <button onClick={() => incRenew(row.name, +1)}>+</button>
+                        </div>
+                        <button className="btn btn-ghost" disabled={busy} onClick={() => registerForName(row.name, getRenewYears(row.name))}>
+                          {row.status === 'active' ? 'Extend' : row.status === 'grace' ? 'Renew' : 'Re-register'}
+                        </button>
+                        <button className="btn btn-ghost" disabled={busy || row.status !== 'active'} onClick={() => transferName(row)}>Transfer</button>
+                        <button className="btn btn-ghost" disabled={busy || row.isPrimary || row.status === 'expired'} onClick={() => setPrimary(row)}>Set primary</button>
+                        <button className="btn btn-ghost" disabled={busy} onClick={() => openResolverModal(row)}>Set resolver</button>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <a href={explorerAccount(row.pda)} target="_blank" rel="noreferrer">View</a>
+                      </div>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <a href={explorerAccount(row.pda)} target="_blank" rel="noreferrer">View</a>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )
           )}
         </div>
 
         <div className="subtitle" style={{ marginTop: 12 }}>
-          • Allowed characters: <code>a–z</code>, <code>0–9</code>, <code>-</code> • 3–64 chars<br />
-          • 7-day grace: owner can renew; after grace, anyone can re-register.<br />
-          • All actions are on-chain; transactions appear in the explorer.
-        </div>
+  &bull; Allowed characters: <code>a-z</code>, <code>0-9</code>, <code>-</code> &bull; 3-64 chars<br />
+  &bull; 7-day grace: owner can renew; after grace, anyone can re-register.<br />
+</div>
+
       </div>
     </>
   );
 
   /** ===== Routes ===== */
   return (
-    <Routes>
-      <Route path="/" element={Landing} />
-      <Route path="/register" element={Registrar} />
-    </Routes>
+    <>
+      <Routes>
+        <Route path="/" element={Landing} />
+        <Route path="/register" element={Registrar} />
+      </Routes>
+
+      {resolverModal.row && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 80,
+            padding: 16,
+          }}
+        >
+          <div className="card neon" style={{ width: '100%', maxWidth: 420 }}>
+            <div style={{ fontWeight: 700, fontSize: 18, marginBottom: 8 }}>
+              Set resolver for {resolverModal.row.name}.carv
+            </div>
+            <div className="subtitle" style={{ marginBottom: 12 }}>
+              Enter a valid Solana public key. This address will resolve to your name.
+            </div>
+            <input
+              value={resolverModal.value}
+              onChange={(e) => setResolverModal(prev => ({ ...prev, value: e.target.value, error: null }))}
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                borderRadius: 12,
+                border: '1px solid var(--border)',
+                background: 'color-mix(in oklab, var(--panel) 90%, transparent)',
+                color: 'var(--text)',
+                marginBottom: 8,
+              }}
+            />
+            {resolverModal.error && (
+              <div style={{ color: '#ff6b6b', marginBottom: 8 }}>{resolverModal.error}</div>
+            )}
+            <div className="row" style={{ justifyContent: 'flex-end' }}>
+              <button className="btn btn-ghost" onClick={closeResolverModal}>Cancel</button>
+              <button className="btn btn-primary" onClick={submitResolverModal} disabled={busy}>
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast message */}
+      {message && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 20,
+            right: 20,
+            zIndex: 60,
+            padding: '12px 14px',
+            borderRadius: 12,
+            border: '1px solid var(--border)',
+            background: message.toLowerCase().includes('success')
+              ? 'rgba(67,209,130,0.12)'
+              : 'rgba(255,107,107,0.12)',
+            color: message.toLowerCase().includes('success') ? '#2f8f5b' : '#ff6b6b',
+            boxShadow: '0 12px 30px rgba(0,0,0,0.2)',
+            backdropFilter: 'blur(8px)',
+          }}
+          role="status"
+        >
+          {message}
+        </div>
+      )}
+    </>
   );
 }

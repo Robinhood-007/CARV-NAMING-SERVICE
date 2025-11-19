@@ -26,9 +26,6 @@
     "@solana/spl-token": "0.4.6",
     "@solana/web3.js": "1.95.3",
     "bs58": "5.0.0",
-    "buffer": "^6.0.3",
-    "crypto-browserify": "^3.12.1",
-    "process": "^0.11.10",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-router-dom": "^7.9.5"
@@ -37,7 +34,13 @@
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0",
     "@vitejs/plugin-react": "^5.1.1",
+    "buffer": "^6.0.3",
+    "crypto-browserify": "^3.12.1",
+    "events": "^3.3.0",
+    "process": "^0.11.10",
+    "stream-browserify": "^3.0.0",
     "typescript": "5.5.4",
+    "util": "^0.12.5",
     "vite": "^5.4.8",
     "vite-plugin-node-polyfills": "^0.24.0"
   }
